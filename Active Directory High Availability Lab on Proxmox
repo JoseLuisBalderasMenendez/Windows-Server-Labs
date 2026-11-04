@@ -1,0 +1,546 @@
+# Active Directory High Availability Lab on Proxmox
+
+## Autor
+
+José Balderas Menéndez
+
+## Fecha
+
+Septiembre 2026
+
+## Versión
+
+1.0
+
+---
+
+# Resumen Ejecutivo
+
+Este laboratorio tuvo como objetivo implementar una infraestructura de Active Directory altamente disponible utilizando Proxmox VE como plataforma de virtualización.
+
+Durante el desarrollo se implementaron dos Domain Controllers distribuidos en diferentes sitios lógicos, configurando replicación de Active Directory, DNS integrado, redundancia de autenticación y pruebas de failover.
+
+Además, se realizaron actividades de troubleshooting relacionadas con DNS y replicación, resolviendo errores asociados a la comunicación entre controladores de dominio.
+
+---
+
+# Objetivos
+
+## Objetivo General
+
+Implementar una infraestructura Active Directory redundante que permita mantener los servicios de autenticación y resolución DNS aún ante la falla de uno de los controladores de dominio.
+
+## Objetivos Específicos
+
+- Instalar Active Directory Domain Services.
+- Crear un bosque y dominio corporativo.
+- Implementar múltiples Domain Controllers.
+- Configurar DNS integrado con Active Directory.
+- Configurar replicación entre controladores.
+- Implementar Sites and Services.
+- Validar escenarios de failover.
+- Resolver problemas de DNS y replicación.
+- Documentar la arquitectura y resultados obtenidos.
+
+---
+
+# Arquitectura de la Solución
+
+## Dominio
+
+```text
+contoso.local
+```
+
+## Topología General
+
+```text
+Forest: contoso.local
+│
+├── Site: Toluca1
+│   └── DC1-GDL2
+│       AD DS
+│       DNS
+│
+└── Site: Toluca2
+    └── DC1-GDL3
+        AD DS
+        DNS
+```
+
+---
+
+# Infraestructura Proxmox
+
+## Plataforma
+
+```text
+Proxmox VE
+```
+
+## Máquinas Virtuales
+
+| Servidor | Sistema Operativo | Función |
+|-----------|-----------|-----------|
+| DC1-GDL2 | Windows Server 2022 | Domain Controller + DNS |
+| DC1-GDL3 | Windows Server 2022 | Domain Controller + DNS |
+
+---
+
+# Configuración de Red
+
+## Toluca1
+
+```text
+Hostname: DC1-GDL2
+
+IP Address:
+10.10.10.X
+
+Roles:
+- Active Directory
+- DNS
+```
+
+## Toluca2
+
+```text
+Hostname: DC1-GDL3
+
+IP Address:
+10.10.20.X
+
+Roles:
+- Active Directory
+- DNS
+```
+
+---
+
+# Implementación del Dominio
+
+## Creación del Bosque
+
+Se instaló Active Directory Domain Services en el primer servidor.
+
+### Dominio Raíz
+
+```text
+contoso.local
+```
+
+### Primer Domain Controller
+
+```text
+DC1-GDL2
+```
+
+Funciones:
+
+- Creación del Forest.
+- Creación del Dominio.
+- Instalación de DNS.
+
+---
+
+# Implementación del Segundo Domain Controller
+
+Se desplegó una segunda máquina virtual.
+
+### Servidor
+
+```text
+DC1-GDL3
+```
+
+### Actividades Realizadas
+
+- Unión al dominio.
+- Instalación del rol AD DS.
+- Promoción como Domain Controller adicional.
+- Replicación inicial del directorio.
+
+Resultado:
+
+```text
+contoso.local
+
+├── DC1-GDL2
+└── DC1-GDL3
+```
+
+---
+
+# Configuración DNS
+
+DNS fue configurado utilizando zonas integradas en Active Directory.
+
+## Configuración DNS Recomendable para Domain Controllers
+
+### DC1-GDL2
+
+```text
+DNS Preferido:
+IP de DC1-GDL3
+
+DNS Alternativo:
+127.0.0.1
+```
+
+### DC1-GDL3
+
+```text
+DNS Preferido:
+IP de DC1-GDL2
+
+DNS Alternativo:
+127.0.0.1
+```
+
+## Configuración DNS para Clientes
+
+```text
+DNS Preferido:
+DC1-GDL2
+
+DNS Alternativo:
+DC1-GDL3
+```
+
+Esta configuración permite continuidad operativa en caso de falla de uno de los controladores de dominio.
+
+---
+
+# Active Directory Sites and Services
+
+## Objetivo
+
+Representar físicamente las ubicaciones de red para optimizar autenticación y replicación.
+
+---
+
+## Site Toluca1
+
+```text
+Subnet:
+10.10.10.0/24
+```
+
+### Domain Controller
+
+```text
+DC1-GDL2
+```
+
+---
+
+## Site Toluca2
+
+```text
+Subnet:
+10.10.20.0/24
+```
+
+### Domain Controller
+
+```text
+DC1-GDL3
+```
+
+---
+
+## Beneficios
+
+- Localización eficiente de Domain Controllers.
+- Optimización del tráfico de replicación.
+- Administración de múltiples ubicaciones.
+- Simulación de entornos empresariales reales.
+
+---
+
+# FSMO Roles
+
+Todos los FSMO fueron inicialmente alojados en el primer Domain Controller.
+
+## Roles FSMO
+
+```text
+Schema Master
+Domain Naming Master
+RID Master
+PDC Emulator
+Infrastructure Master
+```
+
+Comando utilizado:
+
+```cmd
+netdom query fsmo
+```
+
+---
+
+# Validación de Replicación
+
+## Verificación General
+
+Comando:
+
+```cmd
+repadmin /replsummary
+```
+
+Resultado Esperado:
+
+```text
+Fails: 0
+Error: 0
+```
+
+Resultado Obtenido:
+
+```text
+Replicación exitosa.
+```
+
+---
+
+## Verificación Detallada
+
+Comando:
+
+```cmd
+repadmin /showrepl
+```
+
+Resultado:
+
+```text
+Last attempt was successful.
+```
+
+para todas las particiones del directorio.
+
+---
+
+# Escenario de Failover
+
+## Objetivo
+
+Validar que los usuarios continúen autenticándose ante la falla de uno de los Domain Controllers.
+
+---
+
+## Procedimiento
+
+### Paso 1
+
+Verificar autenticación normal.
+
+```cmd
+echo %logonserver%
+```
+
+---
+
+### Paso 2
+
+Apagar el servidor:
+
+```text
+DC1-GDL2
+```
+
+---
+
+### Paso 3
+
+Realizar autenticación nuevamente.
+
+---
+
+### Resultado Esperado
+
+```text
+Autenticación mediante DC1-GDL3
+```
+
+---
+
+### Resultado Obtenido
+
+```text
+Prueba Exitosa
+```
+
+Los equipos pudieron continuar utilizando Active Directory sin interrupciones.
+
+---
+
+# Problemas Encontrados
+
+## Problema #1
+
+### Error
+
+```text
+8524
+
+The DSA operation is unable to proceed because of a DNS lookup failure
+```
+
+---
+
+## Diagnóstico
+
+Herramientas utilizadas:
+
+```cmd
+repadmin /replsummary
+```
+
+```cmd
+repadmin /showrepl
+```
+
+```cmd
+nslookup
+```
+
+```cmd
+dcdiag /test:dns
+```
+
+---
+
+## Causa Raíz
+
+Configuración DNS incompleta que impedía la correcta resolución entre los Domain Controllers.
+
+---
+
+## Solución
+
+Acciones realizadas:
+
+- Validación de registros DNS.
+- Corrección de servidores DNS.
+- Registro de DNS dinámico.
+- Verificación de zonas DNS.
+- Forzado de replicación.
+
+Comando utilizado:
+
+```cmd
+repadmin /syncall /AdeP
+```
+
+---
+
+## Resultado
+
+```text
+Replicación restaurada.
+Errores DNS eliminados.
+Fails = 0
+Errors = 0
+```
+
+---
+
+# Comandos Utilizados
+
+## Replicación
+
+```cmd
+repadmin /replsummary
+```
+
+```cmd
+repadmin /showrepl
+```
+
+```cmd
+repadmin /syncall /AdeP
+```
+
+---
+
+## DNS
+
+```cmd
+nslookup
+```
+
+```cmd
+ipconfig /registerdns
+```
+
+```cmd
+dcdiag /test:dns
+```
+
+---
+
+## FSMO
+
+```cmd
+netdom query fsmo
+```
+
+---
+
+## Active Directory
+
+```cmd
+nltest /dsgetsite
+```
+
+```cmd
+echo %logonserver%
+```
+
+---
+
+# Lecciones Aprendidas
+
+Durante el desarrollo de este laboratorio se obtuvieron conocimientos prácticos relacionados con:
+
+- Implementación de Active Directory.
+- Arquitectura de Domain Controllers.
+- Operación de DNS integrado con Active Directory.
+- Replicación de Active Directory.
+- Diagnóstico y resolución de problemas DNS.
+- Configuración de Active Directory Sites and Services.
+- Conceptos de redundancia y alta disponibilidad.
+- Administración de FSMO Roles.
+- Virtualización utilizando Proxmox VE.
+- Troubleshooting de entornos Microsoft.
+
+---
+
+# Conclusiones
+
+El laboratorio fue implementado exitosamente en Proxmox VE.
+
+Se logró desplegar una infraestructura de Active Directory con múltiples Domain Controllers, replicación funcional y capacidad de failover.
+
+Las pruebas demostraron que los usuarios pueden continuar autenticándose aun cuando uno de los controladores de dominio se encuentra fuera de servicio.
+
+La experiencia permitió comprender la estrecha relación entre Active Directory y DNS, así como desarrollar habilidades prácticas de administración y troubleshooting.
+
+---
+
+# Estado del Proyecto
+
+✅ Completado exitosamente
+
+✅ Replicación funcional
+
+✅ Failover validado
+
+✅ DNS operativo
+
+✅ Sites and Services configurado
+
+✅ Troubleshooting documentado
