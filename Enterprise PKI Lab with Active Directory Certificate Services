@@ -1,0 +1,620 @@
+README.md - Laboratorio 2
+# Enterprise PKI Lab with Active Directory Certificate Services
+
+## Autor
+
+José Balderas Menéndez
+
+## Fecha
+
+Septiembre 2026
+
+## Versión
+
+1.0
+
+---
+
+# Resumen Ejecutivo
+
+Este laboratorio tuvo como objetivo implementar una infraestructura de clave pública (PKI) utilizando Active Directory Certificate Services (AD CS) integrada con Active Directory.
+
+Durante el desarrollo se desplegó una Enterprise Root Certification Authority, se publicaron plantillas de certificados corporativas y se configuró Auto Enrollment para la distribución automática de certificados hacia los controladores de dominio.
+
+La solución permite emitir certificados digitales confiables dentro del dominio y constituye la base para futuras implementaciones de HTTPS, IIS, RDP seguro, VPN y autenticación empresarial.
+
+---
+
+# Objetivos
+
+## Objetivo General
+
+Implementar una infraestructura PKI empresarial integrada con Active Directory para la emisión automática de certificados digitales.
+
+## Objetivos Específicos
+
+- Implementar Active Directory Certificate Services.
+- Configurar una Enterprise Root CA.
+- Publicar plantillas de certificados.
+- Configurar Auto Enrollment mediante GPO.
+- Emitir certificados automáticamente a los Domain Controllers.
+- Validar la correcta emisión e instalación de certificados.
+- Comprender el funcionamiento de una PKI corporativa.
+
+---
+
+# Arquitectura de la Solución
+
+## Dominio
+
+```text
+contoso.local
+```
+
+## Infraestructura
+
+```text
+contoso.local
+
+├── DC1-GDL2
+│   ├── Active Directory
+│   ├── DNS
+│   └── Certificados Automáticos
+│
+├── DC1-GDL3
+│   ├── Active Directory
+│   ├── DNS
+│   └── Certificados Automáticos
+│
+└── CA01
+    └── Enterprise Root CA
+```
+
+---
+
+# Infraestructura Proxmox
+
+## Plataforma
+
+```text
+Proxmox VE
+```
+
+## Máquinas Virtuales
+
+| Servidor | Sistema Operativo | Función |
+|-----------|-----------|-----------|
+| DC1-GDL2 | Windows Server 2022 | Domain Controller |
+| DC1-GDL3 | Windows Server 2022 | Domain Controller |
+| CA01 | Windows Server 2022 | Enterprise Root CA |
+
+---
+
+# Configuración de Red
+
+## DC1-GDL2
+
+```text
+IP:
+10.10.10.6
+```
+
+Función:
+
+```text
+Active Directory
+DNS
+```
+
+---
+
+## DC1-GDL3
+
+```text
+IP:
+10.10.10.7
+```
+
+Función:
+
+```text
+Active Directory
+DNS
+```
+
+---
+
+## CA01
+
+```text
+IP:
+10.10.10.20
+```
+
+Función:
+
+```text
+Enterprise Root CA
+```
+
+---
+
+# Instalación de Active Directory Certificate Services
+
+## Servidor
+
+```text
+CA01
+```
+
+## Rol Instalado
+
+```text
+Active Directory Certificate Services
+```
+
+### Servicios Seleccionados
+
+```text
+Certification Authority
+```
+
+---
+
+# Configuración de la Autoridad Certificadora
+
+## Tipo de Instalación
+
+```text
+Enterprise CA
+```
+
+---
+
+## Tipo de Autoridad
+
+```text
+Root CA
+```
+
+---
+
+## Configuración Criptográfica
+
+```text
+Proveedor:
+RSA#Microsoft Software Key Storage Provider
+
+Longitud:
+4096 bits
+
+Algoritmo Hash:
+SHA256
+```
+
+---
+
+## Nombre de la CA
+
+```text
+CONTOSO-ROOTCA
+```
+
+---
+
+# Validación Inicial
+
+Una vez completada la instalación se verificó la consola:
+
+```text
+Certification Authority
+```
+
+Objetos disponibles:
+
+```text
+Issued Certificates
+Pending Requests
+Failed Requests
+Revoked Certificates
+Certificate Templates
+```
+
+Resultado:
+
+```text
+Validación Exitosa
+```
+
+---
+
+# Plantillas de Certificados Publicadas
+
+Las siguientes plantillas fueron publicadas en la infraestructura PKI.
+
+## Plantilla Computer
+
+```text
+Uso:
+Certificados para equipos miembro del dominio.
+```
+
+---
+
+## Domain Controller
+
+```text
+Uso:
+Controladores de dominio.
+```
+
+---
+
+## Domain Controller Authentication
+
+```text
+Uso:
+Autenticación Kerberos y LDAP seguro.
+```
+
+---
+
+## Web Server
+
+```text
+Uso:
+Implementaciones HTTPS futuras.
+```
+
+---
+
+## User
+
+```text
+Uso:
+Certificados para usuarios del dominio.
+```
+
+---
+
+# Configuración Auto Enrollment
+
+## GPO Creada
+
+```text
+PKI - Auto Enrollment
+```
+
+---
+
+## Configuración Aplicada
+
+Ruta:
+
+```text
+Computer Configuration
+ └ Policies
+    └ Windows Settings
+       └ Security Settings
+          └ Public Key Policies
+             └ Certificate Services Client - Auto Enrollment
+```
+
+Configuración:
+
+```text
+Enabled
+```
+
+Opciones habilitadas:
+
+```text
+Renew expired certificates
+
+Update certificates that use certificate templates
+
+Enroll certificates automatically
+```
+
+---
+
+# Aplicación de Políticas
+
+Comando utilizado:
+
+```cmd
+gpupdate /force
+```
+
+---
+
+# Solicitud Automática de Certificados
+
+Comando utilizado:
+
+```cmd
+certutil -pulse
+```
+
+Resultado:
+
+```text
+Solicitud automática exitosa.
+```
+
+---
+
+# Validación de Certificados Emitidos
+
+## Certificación Autoridad
+
+```text
+CONTOSO-ROOTCA
+```
+
+---
+
+## Certificados Emitidos
+
+Observados en:
+
+```text
+Certification Authority
+ └ Issued Certificates
+```
+
+Certificados emitidos para:
+
+```text
+DC1-GDL2
+
+DC1-GDL3
+```
+
+---
+
+# Validación Local
+
+Herramienta utilizada:
+
+```cmd
+certlm.msc
+```
+
+Ruta:
+
+```text
+Certificates (Local Computer)
+ └ Personal
+    └ Certificates
+```
+
+Resultado:
+
+```text
+Certificado instalado correctamente.
+```
+
+---
+
+# Pruebas Realizadas
+
+## Emisión Automática
+
+Resultado:
+
+```text
+Exitosa
+```
+
+---
+
+## Auto Enrollment
+
+Resultado:
+
+```text
+Exitosa
+```
+
+---
+
+## Publicación de Plantillas
+
+Resultado:
+
+```text
+Exitosa
+```
+
+---
+
+## Integración Active Directory
+
+Resultado:
+
+```text
+Exitosa
+```
+
+---
+
+## Integración DNS
+
+Resultado:
+
+```text
+Exitosa
+```
+
+---
+
+# Problemas Encontrados
+
+## Problema #1
+
+### Descripción
+
+La opción:
+
+```text
+Enterprise CA
+```
+
+aparecía deshabilitada durante la configuración inicial.
+
+---
+
+### Causa
+
+Permisos insuficientes durante el proceso de configuración.
+
+---
+
+### Solución
+
+Asignación de permisos:
+
+```text
+Enterprise Admins
+```
+
+Validación posterior mediante:
+
+```cmd
+whoami /groups
+```
+
+Resultado:
+
+```text
+Problema resuelto.
+```
+
+---
+
+## Problema #2
+
+### Descripción
+
+La plantilla Computer no era visible inicialmente en la consola de emisión.
+
+---
+
+### Diagnóstico
+
+Validación mediante:
+
+```cmd
+certutil -catemplates
+```
+
+---
+
+### Resultado
+
+La plantilla existía correctamente dentro de Active Directory.
+
+---
+
+### Solución
+
+Publicación de las plantillas correctas desde Certification Authority.
+
+Resultado:
+
+```text
+Plantillas publicadas correctamente.
+```
+
+---
+
+# Herramientas Utilizadas
+
+## Active Directory
+
+```cmd
+gpupdate /force
+```
+
+```cmd
+gpresult /r
+```
+
+---
+
+## Certificados
+
+```cmd
+certutil -pulse
+```
+
+```cmd
+certutil -catemplates
+```
+
+```cmd
+certlm.msc
+```
+
+---
+
+## Diagnóstico
+
+```cmd
+whoami
+```
+
+```cmd
+whoami /groups
+```
+
+---
+
+# Lecciones Aprendidas
+
+Durante este laboratorio se adquirieron conocimientos prácticos relacionados con:
+
+- Active Directory Certificate Services.
+- Infraestructuras PKI empresariales.
+- Enterprise Root Certification Authorities.
+- Plantillas de certificados.
+- Certificados para Domain Controllers.
+- Auto Enrollment.
+- GPO aplicadas a certificados.
+- Integración entre Active Directory y PKI.
+- Diagnóstico de problemas relacionados con certificados.
+- Administración de autoridades certificadoras.
+
+---
+
+# Conclusiones
+
+La implementación de la PKI corporativa fue exitosa.
+
+Se logró desplegar una Enterprise Root Certification Authority completamente integrada con Active Directory.
+
+Los Domain Controllers obtuvieron certificados digitales automáticamente mediante Auto Enrollment, validando el correcto funcionamiento de la infraestructura PKI.
+
+Esta implementación constituye la base para futuras soluciones de seguridad corporativa como HTTPS, RDP seguro, VPN y autenticación basada en certificados.
+
+---
+
+# Estado del Proyecto
+
+✅ Enterprise Root CA instalada
+
+✅ Plantillas publicadas
+
+✅ Auto Enrollment configurado
+
+✅ Certificados emitidos
+
+✅ Certificados instalados
+
+✅ Integración Active Directory exitosa
+
+✅ Laboratorio completado exitosamente
+
+
+Este README tiene nivel de documentación de infraestructura empresarial y encaja perfectamente con el formato del Laboratorio 1 para mantener un portafolio profesional consistente.
